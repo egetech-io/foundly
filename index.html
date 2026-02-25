@@ -1016,54 +1016,60 @@ function updateProgress() {
 
 async function getAIResponse() {
   if (isTyping) return;
-  
+
   isTyping = true;
   document.getElementById('send-btn').disabled = true;
+
   showTyping();
   updateProgress();
 
   try {
+
     const response = await fetch('/api/chat', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         systemPrompt: SYSTEM_PROMPT,
-        messages: conversationHistory.length === 0 
-          ? [{ role: 'user', content: 'Привет, я хочу создать бизнес' }]
-          : conversationHistory
+        messages:
+          conversationHistory.length === 0
+            ? [{ role: 'user', content: 'Привет, я хочу создать бизнес' }]
+            : conversationHistory
       })
     });
 
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
     const data = await response.json();
-    const aiMessage = data.content[0].text;
-    
+
+    if (!response.ok)
+      throw new Error(data.error || 'AI error');
+
+    const aiMessage = data.text;
+
     removeTyping();
     addMessage(aiMessage, 'ai');
-    
-    conversationHistory.push({ role: 'assistant', content: aiMessage });
+
+    conversationHistory.push({
+      role: 'assistant',
+      content: aiMessage
+    });
+
     questionCount++;
-    
-    if (aiMessage.includes('составлю твою персональную стратегию') || 
-        aiMessage.includes('у меня есть всё что нужно') ||
-        questionCount >= 12) {
-      setTimeout(() => generatePDF(), 2000);
+
+    if (
+      aiMessage.includes('персональную стратегию') ||
+      questionCount >= 12
+    ) {
+      setTimeout(generatePDF, 2000);
     } else {
       isTyping = false;
       document.getElementById('send-btn').disabled = false;
       document.getElementById('user-input').focus();
     }
+
   } catch (error) {
-    console.error('AI Error:', error);
+    console.error(error);
     removeTyping();
-    addMessage('Произошла ошибка соединения с сервером. Попробуй обновить страницу.', 'ai');
+    addMessage('⚠️ Ошибка AI. Попробуй позже.', 'ai');
     isTyping = false;
-    document.getElementById('send-btn').disabled = false;
   }
 }
 
